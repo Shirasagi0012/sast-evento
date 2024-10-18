@@ -30,9 +30,11 @@ jobs:
         - rid: macos-arm64
           rust_target: aarch64-apple-darwin
           os: macos-latest
+          qt_arch: gcc_64
         - rid: macos-x64
           rust_target: x86_64-apple-darwin
           os: macos-13
+          qt_arch: gcc_64
 
     steps:
     - name: Checkout repository
