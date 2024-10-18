@@ -108,12 +108,6 @@ jobs:
         vcpkgConfigurationJsonGlob: 'vcpkg-configuration.json'
         vcpkgJsonGlob: 'vcpkg.json'
 
-    - name: Install Clang
-      # You may pin to the exact commit or the version.
-      # uses: egor-tensin/setup-clang@ef434b41eb33a70396fb336b1bae39c76d740c3d
-      if: matrix.rid == 'macos-x64'
-      uses: egor-tensin/setup-clang@v1
-
     - name: Build
       shell: pwsh
       run: |
@@ -144,6 +138,8 @@ jobs:
         }
         if ($rid.StartsWith('macos-')) {
           $additionalConfigureArgs += '-DCMAKE_INSTALL_RPATH=@loader_path'
+          $additionalConfigureArgs += '-DCMAKE_C_COMPILER=$(brew --prefix llvm@15)/bin/clang'
+          $additionalConfigureArgs += '-DCMAKE_CXX_COMPILER=$(brew --prefix llvm@15)/bin/clang++'
         }
 
         cmake --preset native @additionalConfigureArgs
