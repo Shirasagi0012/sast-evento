@@ -138,8 +138,8 @@ jobs:
         }
         if ($rid.StartsWith('macos-')) {
           $additionalConfigureArgs += '-DCMAKE_INSTALL_RPATH=@loader_path'
-          $additionalConfigureArgs += '-DCMAKE_C_COMPILER=$(brew --prefix llvm@15)/bin/clang'
-          $additionalConfigureArgs += '-DCMAKE_CXX_COMPILER=$(brew --prefix llvm@15)/bin/clang++'
+          $additionalConfigureArgs += '-DCMAKE_C_COMPILER=gcc-14'
+          $additionalConfigureArgs += '-DCMAKE_CXX_COMPILER=gcc-14'
         }
 
         cmake --preset native @additionalConfigureArgs
