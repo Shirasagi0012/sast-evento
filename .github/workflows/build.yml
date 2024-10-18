@@ -142,6 +142,10 @@ jobs:
           $additionalConfigureArgs += '-DCMAKE_INSTALL_RPATH=@loader_path'
           $additionalConfigureArgs += '-DCMAKE_C_COMPILER=gcc-14'
           $additionalConfigureArgs += '-DCMAKE_CXX_COMPILER=gcc-14'
+          
+        }
+        if ($rid.StartsWith('macos-x64')) {
+          $additionalConfigureArgs += '-DCMAKE_OSX_SYSROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX13.sdk'
         }
 
         cmake --preset native @additionalConfigureArgs
