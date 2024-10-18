@@ -111,7 +111,7 @@ jobs:
     - name: Install Clang
       # You may pin to the exact commit or the version.
       # uses: egor-tensin/setup-clang@ef434b41eb33a70396fb336b1bae39c76d740c3d
-      if: matrix.rid == "macos-x64"
+      if: matrix.rid == 'macos-x64'
       uses: egor-tensin/setup-clang@v1
 
     - name: Build
