@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rid: [linux-x64, win-x64, macos-arm64]
+        rid: [linux-x64, win-x64, macos-arm64, macos-x64]
         include:
         - rid: linux-x64
           rust_target: x86_64-unknown-linux-gnu
@@ -326,7 +326,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rid: [macos-arm64]
+        rid: [macos-arm64, macos-x64]
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
