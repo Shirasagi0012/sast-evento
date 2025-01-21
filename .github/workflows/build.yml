@@ -5,6 +5,7 @@ on:
   push:
     tags:
       - '[0-9]+.[0-9]+.[0-9]+'
+      - 'nightly'
   workflow_dispatch:
 
 permissions: write-all
@@ -20,15 +21,30 @@ jobs:
         include:
         - rid: linux-x64
           rust_target: x86_64-unknown-linux-gnu
+          vcpkg_host_triplet: 'x64-linux-release'
+          vcpkg_target_triplet: 'x64-linux-release'
           os: ubuntu-24.04
           qt_arch: gcc_64
         - rid: win-x64
           msvc_arch: x64
           rust_target: x86_64-pc-windows-msvc
-          vcpkg_target_triplet: 'x64-windows-static-md'
+          vcpkg_host_triplet: 'x64-windows-static-md-release'
+          vcpkg_target_triplet: 'x64-windows-static-md-release'
           os: windows-latest
         - rid: macos-arm64
+          osx_arch: arm64
           rust_target: aarch64-apple-darwin
+          vcpkg_host_triplet: 'arm64-osx-release'
+          vcpkg_target_triplet: 'arm64-osx-release'
+          os: macos-latest
+        - rid: macos-x64
+          osx_arch: x86_64
+          rust_target: x86_64-apple-darwin
+          # Even on ARM64 macOS, it's out of the box to use x64 tools.
+          # Using x64 tools avoids the need to build Qt twice,
+          # and despite the Rosetta 2 overhead, it still offers faster performance.
+          vcpkg_host_triplet: 'x64-osx-release'
+          vcpkg_target_triplet: 'x64-osx-release'
           os: macos-latest
           qt_arch: clang_64
         - rid: macos-x64
@@ -44,6 +60,11 @@ jobs:
         # Fetch all history for version generation
         fetch-depth: 0
         fetch-tags: true
+
+    # Workaround for https://github.com/rust-skia/rust-skia/issues/1049
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12' 
 
     - name: Set up GCC
       if: startsWith(matrix.rid, 'linux-')
@@ -78,15 +99,15 @@ jobs:
       uses: jurplel/install-qt-action@v4
       if: matrix.qt_arch
       with:
-        version: '6.6.3'
+        version: '6.2.0'
         arch: ${{ matrix.qt_arch }}
-        cache: true
 
     - name: Setup Rust toolchain
       uses: moonrepo/setup-rust@v1
       with:
         channel: stable
         targets: ${{ matrix.rust_target }}
+        cache: false
       env:
         GITHUB_TOKEN: ${{ github.token }}
 
@@ -99,7 +120,8 @@ jobs:
           !${{ github.workspace }}/build/*/cargo/build/**/incremental
           ${{ github.workspace }}/build/corrosion/**/target
           !${{ github.workspace }}/build/corrosion/**/target/**/incremental
-        key: corrosion-${{ matrix.rid }}
+        key: corrosion-${{ matrix.rid }}-${{ github.run_id }}
+        restore-keys: corrosion-${{ matrix.rid }}-
 
     - name: Setup CMake
       uses: lukka/get-cmake@latest
@@ -116,16 +138,28 @@ jobs:
         $ErrorActionPreference = "Stop"
         $rid = '${{ matrix.rid }}'
         $vcpkgTargetTriplet = '${{ matrix.vcpkg_target_triplet }}'
+        $vcpkgHostTriplet = '${{ matrix.vcpkg_host_triplet }}'
         $qtArch = '${{ matrix.qt_arch }}'
+        $osxArch = '${{ matrix.osx_arch }}'
         $additionalConfigureArgs = @()
         if ($rid.StartsWith('win-')) {
           $vsPath = &(Join-Path ${env:ProgramFiles(x86)} "\Microsoft Visual Studio\Installer\vswhere.exe") -property installationpath
           Import-Module (Join-Path $vsPath "Common7\Tools\Microsoft.VisualStudio.DevShell.dll")
           Enter-VsDevShell -VsInstallPath $vsPath -SkipAutomaticLocation -DevCmdArguments '-arch=${{ matrix.msvc_arch }} -host_arch=x64'
-          $additionalConfigureArgs += '-DPKG_CONFIG_EXECUTABLE:FILEPATH=./build/vcpkg_installed/x64-windows/tools/pkgconf/pkgconf.exe'
+          $additionalConfigureArgs += "-DPKG_CONFIG_EXECUTABLE:FILEPATH=./build/vcpkg_installed/$($vcpkgHostTriplet ?? 'x64-windows')/tools/pkgconf/pkgconf.exe"
+        }
+        if ($osxArch) {
+          $additionalConfigureArgs += "-DCMAKE_OSX_ARCHITECTURES=$osxArch"
+
+          # For https://github.com/rust-skia/rust-skia
+          $env:CLANGCC = "clang -arch $osxArch"
+          $env:CLANGCXX = "clang++ -arch $osxArch"
         }
         if ($vcpkgTargetTriplet) {
           $additionalConfigureArgs += "-DVCPKG_TARGET_TRIPLET:STRING=$vcpkgTargetTriplet"
+        }
+        if ($vcpkgHostTriplet) {
+          $additionalConfigureArgs += "-DVCPKG_HOST_TRIPLET:STRING=$vcpkgHostTriplet"
         }
         if (-not $qtArch) {
           $additionalConfigureArgs += "-DVCPKG_MANIFEST_FEATURES=qt-from-vcpkg"
@@ -327,6 +361,63 @@ jobs:
         name: pacman-${{ matrix.rid }}
         path: ./deploy/pacman/*.pkg.tar.zst
 
+  package-appimage:
+    name: Package ${{ matrix.rid }} (AppImage)
+    runs-on: ubuntu-24.04
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        rid: [linux-x64]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+            submodules: false
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.0'
+          cache: true
+
+      - name: install Fcitx5 for Qt
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y extra-cmake-modules ninja-build
+          git clone --depth 1 --branch 5.1.1 https://github.com/fcitx/fcitx5-qt
+          cmake -DBUILD_ONLY_PLUGIN=ON -DENABLE_QT4=OFF -DENABLE_QT5=OFF -DENABLE_QT6=ON -G Ninja -S ./fcitx5-qt -B ./fcitx5-qt-build -DCMAKE_PREFIX_PATH=$QT_ROOT_DIR -DCMAKE_BUILD_TYPE=Release
+          cmake --build ./fcitx5-qt-build --parallel --config Release
+          cmake --install ./fcitx5-qt-build
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: files-${{ matrix.rid }}
+
+      - name: Construct AppDir
+        run: |
+          mkdir appdir
+          install -D -m644 "./ui/assets/image/icon/evento.svg" "./appdir/sast-evento.svg"
+          install -D -m644 "./deploy/sast-evento.desktop" "./appdir/sast-evento.desktop"
+          mkdir -p "./appdir/opt/sast-evento"
+          tar -xzf ./files.tar.gz -C "./appdir/opt/sast-evento"
+
+      - name: Create AppImage
+        run: |
+          echo "::group::Install dependencies"
+          sudo apt-get install -y fuse
+          pip install pyelftools
+          echo "::endgroup::"
+          export PYTHONUNBUFFERED=1
+          python ./deploy/create-appimage --app-dir ./appdir --executables ./appdir/opt/sast-evento/sast-evento:./appdir/opt/sast-evento/sast-evento-tray --target ./sast-evento.AppImage
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: appimage-${{ matrix.rid }}
+          path: ./*.AppImage
+
   package-macos:
     name: Package ${{ matrix.rid }} (dmg)
     runs-on: macos-latest
@@ -376,6 +467,7 @@ jobs:
       - package-win
       - package-deb
       - package-pacman
+      - package-appimage
       - package-macos
     steps:
       - name: Download all artifacts
@@ -427,9 +519,11 @@ jobs:
 
       - name: Release (GitHub)
         uses: ncipollo/release-action@v1
-        if: github.event_name == 'push' && github.ref_type == 'tag'
+        if: github.ref_type == 'tag'
         with:
           artifacts: ./artifacts/*
           allowUpdates: true
           draft: false
           omitBody: true
+          prerelease: ${{ github.ref == 'refs/tags/nightly' }}
+          removeArtifacts: ${{ github.ref == 'refs/tags/nightly' }}

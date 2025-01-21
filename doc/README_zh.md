@@ -52,13 +52,13 @@ SAST Evento 是一个 SAST 的事件管理系统，平时我们在活动过程�
 | Windows x64          | ✅    |                     |
 | Windows arm64        | :x:  | 等待 Slint 上游修复 |
 | macOS arm64          | ✅    |                     |
-| macOS x64            | :x:  | 欢迎提交 PR         |
+| macOS x64            | ✅    |                     |
 | Linux x64 (pacman)   | ✅    |                     |
 | Linux x64 (portage)  | ✅    |                     |
 | Linux x64 (deb)      | ✅    |                     |
 | Linux x64 (rpm)      | :x:  | 欢迎提交 PR         |
 | Linux x64 (nix)      | :x:  | 欢迎提交 PR         |
-| Linux x64 (AppImage) | :x:  | 欢迎提交 PR         |
+| Linux x64 (AppImage) | ✅    |                     |
 
 ## 📦 安装
 

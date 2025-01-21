@@ -52,13 +52,13 @@ This project is the desktop client version of SAST Evento.
 | Windows x64          | ✅      |                                  |
 | Windows arm64        | :x:    | Waiting for Slint upstream fixes |
 | macOS arm64          | ✅      |                                  |
-| macOS x64            | :x:    | PRs are welcome                  |
+| macOS x64            | ✅      |                                  |
 | Linux x64 (pacman)   | ✅      |                                  |
 | Linux x64 (portage)  | ✅      |                                  |
 | Linux x64 (deb)      | ✅      |                                  |
 | Linux x64 (rpm)      | :x:    | PRs are welcome                  |
 | Linux x64 (nix)      | :x:    | PRs are welcome                  |
-| Linux x64 (AppImage) | :x:    | PRs are welcome                  |
+| Linux x64 (AppImage) | ✅      |                                  |
 
 ## 📦 Installation
 

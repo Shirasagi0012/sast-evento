@@ -1,9 +1,10 @@
 //import "./assets/font/MiSans-Regular.ttf";
 import { Token } from "./global.slint";
-import { Button } from "std-widgets.slint";
+import { Button, ScrollView } from "std-widgets.slint";
 import { 
     Empty,
-    Toast
+    Toast,
+    ContentDialog
 } from "./components/index.slint";
 import { 
     ViewManagerBridge,
@@ -39,7 +40,6 @@ import {
     SettingPageBridge
 } from "./views/index.slint";
 import { StateLayer } from "./components/index.slint";
-import { GlobalProps } from "modules/surrealism-ui/themes/src/index.slint";
 import "assets/font/MiSans-Regular.ttf";
 
 // export for C++ interact
@@ -225,7 +225,7 @@ export component App inherits Window {
     background: Token.color.surface;
     icon: Token.image.icon.evento;
     init => {
-        GlobalProps.theme = Token.surrealism-ui-default-theme;
+        // GlobalProps.theme = Token.surrealism-ui-default-theme;
     }
     VerticalLayout {
         heading := HorizontalLayout {
@@ -278,6 +278,36 @@ export component App inherits Window {
     OverlayRegion {
         height: 100%;
         width: 100%;
+    }
+
+    popup := ContentDialog {
+        z: 999;
+        width: root.width;
+        height: root.height;
+        dialog-title: @tr("更新日志");
+        confirm-btn-text: @tr("更新");
+        cancel-btn-text: @tr("取消");
+        is-show <=> AboutPageBridge.show-popup;
+        ScrollView {
+            VerticalLayout {
+                text := Text {
+                    width: 100%;
+                    text: AboutPageBridge.update-log;
+                    font-size: Token.font.body.large.size;
+                    font-weight: Token.font.body.large.weight;
+                    color: Token.color.on-surface;
+                    wrap: TextWrap.char-wrap;
+                }
+            }
+        }
+
+        confirm => {
+            AboutPageBridge.open-web("https://github.com/NJUPT-SAST/sast-evento/releases/latest");
+            popup.close();
+        }
+        cancel => {
+            popup.close();
+        }
     }
 
     private property <length> toast-padding: 16px;
